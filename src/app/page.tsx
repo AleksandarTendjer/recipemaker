@@ -1,101 +1,167 @@
-import Image from "next/image";
+"use client";
+import SearchBar from "./components/Forms/SearchBar";
+import { useState, useEffect } from "react";
+import FilterContainer from "./components/Filters/FilterContainer";
+import { MoreVerticalIcon } from "lucide-react";
+import { FilterContext, StringKeyValuePair } from "./lib/typeDefintions";
+import LoadingPopup from "./components/LoadingPopup";
 
-export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+const Home = () => {
+	const [searchTerm, setSearchTerm] = useState("");
+	const [isFilterVisible, setIsFilterVisible] = useState(false);
+	const [loading, setLoading] = useState(false); // Loading state
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
-}
+	const diets: StringKeyValuePair[] = [
+		{ label: "Vegetarian", value: "vegetarian" },
+		{ label: "Vegan", value: "vegan" },
+		{ label: "Pescatarian", value: "pescatarian" },
+		{ label: "Pork-free", value: "pork-free" },
+		{ label: "Keto", value: "keto-friendly" },
+		{ label: "Paleo", value: "paleo" },
+	];
+	const allergies: StringKeyValuePair[] = [
+		{ label: "Gluten-free", value: "gluten-free" },
+		{ label: "Peanut-free", value: "peanut-free" },
+		{ label: "Shellfish-free", value: "shellfish-free" },
+		{ label: "Soy-free", value: "soy-free" },
+		{ label: "Dairy-free", value: "dairy-free" },
+	];
+
+	const getSelectedItemsFromStorage = (key: string) => {
+		const storedValue =
+			typeof window !== "undefined" ? localStorage.getItem(key) : null;
+		if (!storedValue) return [];
+		const data = JSON.parse(storedValue);
+		const { savedItems, expiration } = data;
+		if (!expiration || new Date(expiration) < new Date()) {
+			localStorage.removeItem(key);
+			return [];
+		}
+		return savedItems;
+	};
+
+	const [selectedDiets, setSelectedDiets] = useState(
+		getSelectedItemsFromStorage("selectedDiets")
+	);
+
+	const [selectedAllergies, setSelectedAllergies] = useState(
+		getSelectedItemsFromStorage("selectedAllergies")
+	);
+
+	useEffect(() => {
+		const setItemToStorage = (key: string, selectedItems: object[]) => {
+			const expiration = new Date();
+			expiration.setTime(expiration.getTime() + 30 * 60 * 1000);
+			localStorage.setItem(
+				key,
+				JSON.stringify({
+					savedItems: selectedItems,
+					expiration: expiration.toISOString(),
+				})
+			);
+		};
+
+		setItemToStorage("selectedAllergies", selectedAllergies);
+		setItemToStorage("selectedDiets", selectedDiets);
+	}, [selectedAllergies, selectedDiets]);
+
+	const handleSearch = async () => {
+		setLoading(true);
+		const allergiesFromStorage = getSelectedItemsFromStorage(
+			"selectedAllergies"
+		).reduce((acc: string[], obj: StringKeyValuePair) => {
+			acc.push(obj.value);
+			return acc;
+		}, []);
+		const dietsFromStorage = getSelectedItemsFromStorage(
+			"selectedDiets"
+		).reduce((acc: string[], obj: StringKeyValuePair) => {
+			acc.push(obj.value);
+			return acc;
+		}, []);
+
+		const params: {
+			app_id: string | undefined;
+			app_key: string | undefined;
+			q: string;
+			health: string[];
+		} = {
+			app_id: process.env.NEXT_PUBLIC_APP_ID,
+			app_key: process.env.NEXT_PUBLIC_APPLICATION_KEY,
+			q: searchTerm,
+			health: [],
+		};
+
+		if (allergiesFromStorage && allergiesFromStorage.length > 0) {
+			allergiesFromStorage.forEach((allergy: string) => {
+				params.health.push(allergy);
+			});
+		}
+
+		if (dietsFromStorage && dietsFromStorage.length > 0) {
+			dietsFromStorage.forEach((diet: string) => {
+				params.health.push(diet);
+			});
+		}
+
+		try {
+			const response = await fetch("/api/search", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ params }),
+			});
+
+			if (!response.ok) {
+				throw new Error("Failed to fetch data from API");
+			}
+
+			const data = await response.json();
+			console.log(data);
+		} catch (error) {
+			console.error("Error fetching data:", error);
+		} finally {
+			setLoading(false);
+		}
+	};
+	const handleFilterToggle = () => {
+		setIsFilterVisible(!isFilterVisible);
+	};
+	return (
+		<div className="flex min-h-screen flex-col items-center justify-center bg-slate-600 bg-opacity-40 backdrop-blur">
+			<div className="flex w-full max-w-md flex-row items-center justify-center rounded-lg bg-white p-4 shadow-lg dark:bg-slate-500">
+				<SearchBar
+					searchTerm={searchTerm}
+					setSearchTerm={setSearchTerm}
+					OnSearch={handleSearch}
+					className={"flex w-full items-center rounded-full bg-gray-200 p-2"}
+				/>
+				<div
+					onClick={handleFilterToggle}
+					className="ml-4 flex h-8 w-8 cursor-pointer rounded-full bg-blue-500 text-white hover:bg-blue-600 focus:outline-none">
+					<MoreVerticalIcon className={"h-8 w-8"} />
+				</div>
+			</div>
+			{loading && <LoadingPopup loading={loading} />}
+			<FilterContext.Provider
+				value={{
+					selectedAllergies,
+					setSelectedAllergies,
+					allergies,
+					selectedDiets,
+					setSelectedDiets,
+					diets,
+				}}>
+				<FilterContainer
+					isVisible={isFilterVisible}
+					setIsFilterVisible={setIsFilterVisible}
+				/>
+			</FilterContext.Provider>
+
+			<ul></ul>
+		</div>
+	);
+};
+
+export default Home;
